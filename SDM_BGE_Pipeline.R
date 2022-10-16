@@ -35,20 +35,19 @@ files.present <- list.files('D:/Github/BGE-SDM/RDATA/wc5', pattern="[.]bil$", fu
 files.present <- files.present[2:20] # remove alt
 files.present
 
-### Extent sunda lon 92 - 127; lat -11S - 19N ####
-ext.sunda <- extent(92,127,-11,19)
+### Extent of the study area
+extent <- extent(-43, 109, 25, 81)
 
 # countries boundaries
 countries <- rgdal::readOGR("D:/Github/BGE-SDM/GISDATA/Study Area SHP")
 proj4string(countries) <- "+proj=longlat +datum=WGS84"
-countries <- crop(countries, ext.sunda)
 plot(countries)
 str(countries)
 
 ### Loop for cropping with extent and write as ascii ####
 for(i in files.present)  {
   raster <- raster(i)
-  raster <- crop(raster, ext.sunda)
+  raster <- crop(raster, extent)
   writeRaster(raster,
               filename  = paste("D:/Github/BGE-SDM/RDATA/clipped/", "sunda.", basename(i), sep = ""),
               format    = 'ascii',
