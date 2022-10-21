@@ -1,7 +1,7 @@
 rm(list = ls(all=T))
 setwd("D:/Github/BGE-SDM")
 #save(list=ls(all=TRUE), file="D:/Github/BGE-SDM/SDM.RData") # save RDATA for later use
-load("D:/Papers.Projects/Merbau.VTB/R/merbau.vtb.2015.RData")
+load("D:/Github/BGE-SDM/SDM.RData")
 #### Install required libraries ####
 library(rgbif)
 library(raster) 
