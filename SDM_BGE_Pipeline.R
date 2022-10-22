@@ -55,11 +55,13 @@ duplicates <- duplicated(fe.gbif)
 fe.gbif <- fe.gbif[!duplicates,]
 head(fe.gbif); dim(fe.gbif)
 write.csv(fe.gbif, 'D:/Github/BGE-SDM/Output/Oeneis_jutta.csv', row.names=F)
-
 coordinates(fe.gbif) <- ~decimalLongitude+decimalLatitude
 str(fe.gbif)
+P4S.latlon <- CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")
 fe.gbif@proj4string <- P4S.latlon
 plot(countries); plot(fe.gbif, col='purple', add=T)
+
+
 ### 2. Compile climate data ####
 ### WORLDCLIM DATA ####
 
@@ -67,12 +69,12 @@ plot(countries); plot(fe.gbif, col='purple', add=T)
 
 global.clim <- getData("worldclim", var="bio", res=5, download=T, path="RDATA")
 
-files.present <- list.files('D:/Github/BGE-SDM/RDATA/wc5/', pattern="[.]bil$", full.names=T) # alternatives for pattern (c|C)(e|E)(l|L)$
+files.present.bil <- list.files('D:/Github/BGE-SDM/RDATA/wc5/', pattern="[.]bil$", full.names=T) # alternatives for pattern (c|C)(e|E)(l|L)$
 
-files.present
+files.present.bil
 
 ### Loop for cropping with extent and write as ascii ####
-for(i in files.present)  {
+for(i in files.present.bil)  {
   raster <- raster(i)
   raster <- crop(raster, extent)
   writeRaster(raster,
@@ -90,21 +92,20 @@ head(present.stack)
 present.df <- as.data.frame(present.stack, xy=T)
 coordinates(present.df) <- ~x+y
 gridded(present.df) <- T
-#present.df@proj4string <- P4S.latlon #error
+present.df@proj4string <- P4S.latlon
 present.df$grid.index <- present.df@grid.index # Add grid.index value
 head(present.df)
-image(present.df, 'fe_buffer_bio2')
+image(present.df, 'fe_buffer_bio01')
 
 str(present.df)
 class(present.df)
 present.df@coords
 present.df@proj4string <- P4S.latlon
 
-######
+
 ### 3. Get abiotic bioclim data ####
 
 str(fe.gbif); str(present.df)
-
 fe.gbif.abiotic <- over(fe.gbif, present.df) # Get climate variables + grid.index
 str(fe.gbif.abiotic) # 173  20
 fe.gbif.abiotic
@@ -114,13 +115,16 @@ dim(fe.gbif.abiotic); dim(fe.gbif) # 173  20  1
 head(fe.gbif); str(fe.gbif)
 fe.gbif <- cbind(fe.gbif, fe.gbif.abiotic) # Link species col and climate data
 head(fe.gbif)
-#error??
-duplicates <- duplicated(fe.gbif[,c("species", "grid.index")]) # Duplicates on grid.index
-table(duplicates) # 114 F 59 T
-plot(raster(present.df, 'fe_buffer_bio2')); points(fe.gbif$decimalLongitude, fe.gbif$decimalLatitude)
 
-boxplot(fe.gbif$bio1, main = "Mean annual Temperature", ylab="Temperature x 10 (in °C)")
-boxplot(fe.gbif$bio12, main = "Annual precipitation", ylab="Precipitation (in mm)")
+#error?? = Error in duplicated.default(fe.gbif[, c("species", "grid.index")]) :duplicated() applies only to vectors
+duplicates <- duplicated(fe.gbif[,c("species", "grid.index")]) # Duplicates on grid.index
+
+
+table(duplicates) # 114 F 59 T
+plot(raster(present.df, 'fe_buffer_bio01')); points(fe.gbif$decimalLongitude, fe.gbif$decimalLatitude)
+
+boxplot(fe.gbif$fe_buffer_bio01, main = "Mean annual Temperature", ylab="Temperature x 10 (in °C)")
+boxplot(fe.gbif$fe_buffer_bio12, main = "Annual precipitation", ylab="Precipitation (in mm)")
 
 
 ### 4. Run Maxent model with bioclim data in 500 km buffered area around presences to balance prevalence ####
