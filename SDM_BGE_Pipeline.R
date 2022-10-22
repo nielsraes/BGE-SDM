@@ -7,6 +7,8 @@ library(rgbif)
 library(raster) 
 library(sp)
 library(mapr)
+library(dismo)
+library(rgeos)
 
 #### 1. GBIF DATA ####
 #get the key of species by its name
@@ -15,7 +17,6 @@ key = name_backbone(name="Oeneis jutta")$speciesKey
 #search data according to key. **occ_data vs occ_Search
 dat <- occ_data(taxonKey = key,limit=1000)
 head(dat)
-
 names(dat)
 names(dat$data)
 
@@ -32,7 +33,6 @@ dat.filter
 
 ### Extent of the study area
 extent <- extent(-43, 109, 25, 81) ##NEED TO BE REARRANGE
-
 
 # countries boundaries
 countries <- rgdal::readOGR("D:/Github/BGE-SDM/GISDATA/Study Area SHP")
@@ -66,11 +66,9 @@ plot(countries); plot(fe.gbif, col='purple', add=T)
 ### WORLDCLIM DATA ####
 
 # Download precipitation/Bio/+++ data from WorldClim
-
 global.clim <- getData("worldclim", var="bio", res=5, download=T, path="RDATA")
 
 files.present.bil <- list.files('D:/Github/BGE-SDM/RDATA/wc5/', pattern="[.]bil$", full.names=T) # alternatives for pattern (c|C)(e|E)(l|L)$
-
 files.present.bil
 
 ### Loop for cropping with extent and write as ascii ####
@@ -96,15 +94,12 @@ present.df@proj4string <- P4S.latlon
 present.df$grid.index <- present.df@grid.index # Add grid.index value
 head(present.df)
 image(present.df, 'fe_buffer_bio01')
-
 str(present.df)
 class(present.df)
 present.df@coords
 present.df@proj4string <- P4S.latlon
 
-
 ### 3. Get abiotic bioclim data ####
-
 str(fe.gbif); str(present.df)
 fe.gbif.abiotic <- over(fe.gbif, present.df) # Get climate variables + grid.index
 str(fe.gbif.abiotic) # 173  20
@@ -115,11 +110,9 @@ dim(fe.gbif.abiotic); dim(fe.gbif) # 173  20  1
 head(fe.gbif); str(fe.gbif)
 fe.gbif <- cbind(fe.gbif, fe.gbif.abiotic) # Link species col and climate data
 head(fe.gbif)
-
-#error?? = Error in duplicated.default(fe.gbif[, c("species", "grid.index")]) :duplicated() applies only to vectors
+#error?? = duplicated() applies only to vectors
 duplicates <- duplicated(fe.gbif[,c("species", "grid.index")]) # Duplicates on grid.index
-
-
+names(fe.gbif)
 table(duplicates) # 114 F 59 T
 plot(raster(present.df, 'fe_buffer_bio01')); points(fe.gbif$decimalLongitude, fe.gbif$decimalLatitude)
 
@@ -151,15 +144,70 @@ head(present.df); dim(present.df) # 7776000      21
 head(fe.gbif)
 
 
-fe.gbif.maxent <- fe.gbif$data[, c("species", "decimalLongitude", "decimalLatitude")]
-#ERROR?
+fe.gbif.maxent <- fe.gbif[, c("species", "decimalLongitude", "decimalLatitude")]
 names(fe.gbif.maxent) <- c("species", "lon", "lat")
 head(fe.gbif.maxent); dim(fe.gbif.maxent) # 103   3
 plot(countries); points(fe.gbif.maxent$lon, fe.gbif.maxent$lat, pch=19, col='red')
 
 write.csv(fe.gbif.maxent, 'D:/Github/BGE-SDM/Output/fe.gbif.maxent.csv', row.names=F) # write species points file
 
+# Convert to coll.locs spatial Points Data Frame and create 500 km buffer
+coordinates(fe.gbif.maxent) <- ~lon+lat
+proj4string(fe.gbif.maxent) <- P4S.latlon
+plot(countries); points(fe.gbif.maxent, pch=19, cex=0.5, col='red')
+x <- circles(fe.gbif.maxent, d=500000, lonlat=TRUE) # 500 km
+pol <- gUnaryUnion(x@polygons) # dissolve polygons
+extent(pol)
+plot(pol, col='blue', add=T); points(fe.gbif.maxent, pch=19, cex=0.5, col='red')
 
+##### BURDAN ####
+# extract cell numbers for the circles
+v <- extract(mask, x@polygons, cellnumbers=T)
+str(v)
+# use rbind to combine the elements in list v
+v <- do.call(rbind, v)
+head(v); dim(v) # 211089  2
+
+# remove ocean cells
+v <- unique(na.omit(v))
+head(v); dim(v) # 56783  2
+
+# to display the results
+m <- mask
+m[] <- NA # empty mask
+m[as.vector(v[,1])] <- 1
+plot(m, col='purple')
+extent(m)
+str(m); summary(m)
+plot(m, ext=extent(x@polygons)+1, col='blue')
+plot(x@polygons, add=T)
+points(fe.gbif.maxent, pch=19, cex=0.5, col='red')
+plot(countries, add=T)
+str(m) # rasterlayer
+
+# Write mask for buffered areas
+writeRaster(m, filename  = "D:/Github/BGE-SDM/Output/mask.500km.asc", format = 'ascii', NAflag = -9999, overwrite = T)
+
+### Add mask.buffer to present.df
+head(present.df); dim(present.df) # 7776000      21
+# present.df <- subset(present.df, select = -c(mask)) # remove mask column
+
+present.species.df <- present.df # copy present.df
+mask.buffer.df <- as.data.frame(stack('D:/Github/BGE-SDM/Output/mask.500km.asc'), xy=T) # read mask layer
+head(mask.buffer.df); dim(mask.buffer.df); colSums(mask.buffer.df, na.rm=T, dims=1)
+head(present.species.df); str(present.species.df)
+
+#error
+present.species.df$mask <- mask.buffer.df[,'mask.500km'] # replace mask with mask.500km
+
+head(present.species.df); dim(present.species.df) # 7776000      21
+str(present.species.df) # SpatialPixelsDataFrame
+present.species.df <- na.omit(present.species.df@data)
+head(present.species.df); dim(present.species.df) # 56783    21
+
+
+
+###BURAYA###
 ### 5. Select uncorrelated variables using VIF ####
 ### 6. MAXENT bioclim ####
 ### 7. SDM on ISRIC Soil within climate niche ####
