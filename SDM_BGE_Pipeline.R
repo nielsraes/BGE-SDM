@@ -160,7 +160,7 @@ pol <- gUnaryUnion(x@polygons) # dissolve polygons
 extent(pol)
 plot(pol, col='blue', add=T); points(fe.gbif.maxent, pch=19, cex=0.5, col='red')
 
-##### BURDAN ####
+
 # extract cell numbers for the circles
 v <- extract(mask, x@polygons, cellnumbers=T)
 str(v)
@@ -206,8 +206,6 @@ present.species.df <- na.omit(present.species.df@data)
 head(present.species.df); dim(present.species.df) # 56783    21
 
 
-
-###BURAYA###
 ### 5. Select uncorrelated variables using VIF ####
 ### 6. MAXENT bioclim ####
 ### 7. SDM on ISRIC Soil within climate niche ####
