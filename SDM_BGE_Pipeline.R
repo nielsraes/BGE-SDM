@@ -51,6 +51,7 @@ duplicates <- duplicated(fe.gbif)
 fe.gbif <- fe.gbif[!duplicates,]
 head(fe.gbif); dim(fe.gbif)
 write.csv(fe.gbif, 'D:/Github/BGE-SDM/Output/Oeneis_jutta.csv', row.names=F)
+
 fe.gbif.maxent <- fe.gbif[, c("species", "decimalLongitude", "decimalLatitude")]
 names(fe.gbif.maxent) <- c("species", "lon", "lat")
 head(fe.gbif.maxent); dim(fe.gbif.maxent)
@@ -118,8 +119,10 @@ head(fe.gbif); str(fe.gbif)
 fe.gbif <- cbind(fe.gbif, fe.gbif.abiotic) # Link species col and climate data
 names(fe.gbif)
 head(fe.gbif)
+
 #error?? = duplicated() applies only to vectors sol: as.data.frame()
 duplicates <- duplicated(as.data.frame(fe.gbif)[,c("species", "grid.index")]) # Duplicates on grid.index
+fe.gbif <- fe.gbif[!duplicates,]
 names(fe.gbif)
 table(duplicates)
 summary(fe.gbif)
@@ -202,7 +205,7 @@ mask.buffer.df <- as.data.frame(stack('D:/Github/BGE-SDM/Output/mask.500km.asc')
 head(mask.buffer.df); dim(mask.buffer.df); colSums(mask.buffer.df, na.rm=T, dims=1)
 head(present.species.df); str(present.species.df)
 
-#error undefined columns selected
+#ERROR!!?? undefined columns selected
 present.species.df$mask <- mask.buffer.df[,'mask.500km'] # replace mask with mask.500km
 
 head(present.species.df); dim(present.species.df)
@@ -216,10 +219,13 @@ head(present.species.df); dim(present.species.df)
 # A VIF for a single explanatory variable is obtained using the r-squared value of the regression of that variable against all other explanatory variables (http://www.r-bloggers.com/collinearity-and-stepwise-vif-selection/)
 
 x <- sample(1:(dim(present.species.df)[1]), 10000, replace=F) # sample 10k background points for the VIF
+
 sample.df <- present.species.df[x,]
+
 sample.df <- present.species.df
+
 head(sample.df); dim(sample.df) 
-#plot(countries); points(sample.df$x, sample.df$y, col='green'); plot(countries, add=T)
+plot(countries); points(sample.df$x, sample.df$y, col='green'); plot(countries, add=T)
 sample.matrix <- as.matrix(sample.df)
 head(sample.matrix); dim(sample.matrix)
 
@@ -252,7 +258,8 @@ mainDirMaxent <- "D:/Github/BGE-SDM/Output/"
 
 ### CHECK FOLDER NAMES !!!
 ### Logistic
-#error?
+
+#ERROR!!??  numbers of columns of arguments do not match
 swd <- rbind(as.data.frame(fe.gbif.df), sample.df.keep); dim(swd) 
 
 
