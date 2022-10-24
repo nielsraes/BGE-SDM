@@ -121,12 +121,14 @@ names(fe.gbif)
 head(fe.gbif)
 
 #error?? = duplicated() applies only to vectors sol: as.data.frame()
-duplicates <- duplicated(as.data.frame(fe.gbif)[,c("species", "grid.index")]) # Duplicates on grid.index
+duplicates <- duplicated(fe.gbif@data[,c("species", "grid.index")]) # Duplicates on grid.index
+str(fe.gbif@data)
+
 fe.gbif <- fe.gbif[!duplicates,]
 names(fe.gbif)
 table(duplicates)
 summary(fe.gbif)
-fe.gbif <- na.omit(fe.gbif)
+fe.gbif <- na.omit(fe.gbif@data)
 head(fe.gbif) ; dim(fe.gbif)
 
 plot(raster(present.df, 'fe_buffer_bio01')); points(fe.gbif$decimalLongitude, fe.gbif$decimalLatitude) #Mean annual Temperature
@@ -202,11 +204,20 @@ head(present.df); dim(present.df)
 
 present.species.df <- present.df # copy present.df
 mask.buffer.df <- as.data.frame(stack('D:/Github/BGE-SDM/Output/mask.500km.asc'), xy=T) # read mask layer
+
+names(mask.buffer.df)
+names(mask.buffer.df)[3]
+names(mask.buffer.df)[3] <- "mask.500km"
+
 head(mask.buffer.df); dim(mask.buffer.df); colSums(mask.buffer.df, na.rm=T, dims=1)
 head(present.species.df); str(present.species.df)
+dim(present.species.df@data)
+dim(mask.buffer.df)
 
-#ERROR!!?? undefined columns selected
-present.species.df$mask <- mask.buffer.df[,'mask.500km'] # replace mask with mask.500km
+present.species.df@data$mask <- mask.buffer.df[,'mask.500km'] # replace mask with mask.500km
+head(mask.buffer.df)
+present.species.df <- cbind(present.species.df@coords, present.species.df@data)
+
 
 head(present.species.df); dim(present.species.df)
 str(present.species.df) # SpatialPixelsDataFrame
@@ -221,11 +232,10 @@ head(present.species.df); dim(present.species.df)
 x <- sample(1:(dim(present.species.df)[1]), 10000, replace=F) # sample 10k background points for the VIF
 
 sample.df <- present.species.df[x,]
-
-sample.df <- present.species.df
-
+#sample.df <- present.species.df
 head(sample.df); dim(sample.df) 
 plot(countries); points(sample.df$x, sample.df$y, col='green'); plot(countries, add=T)
+head(sample.df)
 sample.matrix <- as.matrix(sample.df)
 head(sample.matrix); dim(sample.matrix)
 
