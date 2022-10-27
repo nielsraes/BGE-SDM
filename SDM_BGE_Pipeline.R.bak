@@ -1,7 +1,7 @@
 rm(list = ls(all=T))
 setwd("D:/R")
-#save(list=ls(all=TRUE), file="D:/R/SDM.RData") # save RDATA for later use
-#load("D:/R/SDM.RData")
+#save(list=ls(all=TRUE), file="D:/Github/BGE-SDM/SDM.RData") # save RDATA for later use
+#load("D:/Github/BGE-SDM/SDM.RData")
 
 #### Install required libraries ####
 library(rgbif)
@@ -274,7 +274,7 @@ library(rasterVis)
 
 
 ## format the data ----
-Oeneis_jutta_data <- 
+ProLau_data <- 
   BIOMOD_FormatingData(
     resp.var = fe.gbif.maxent@data["species"],
     resp.xy = fe.gbif.maxent@coords,
@@ -286,22 +286,22 @@ Oeneis_jutta_data <-
   )
 
 ## formatted object summary
-Oeneis_jutta_data
+ProLau_data
 
 ## plot of selected pseudo-absences
-plot(Oeneis_jutta_data)
+plot(ProLau_data)
 
 
 ###### TESTING BY DIFFERENT CSVs #####
 #edited version of maxent by changing column name to species and giving a value as 1.
-Oeneis_jutta_occ <- read.csv('Output/fe.gbif.maxent1.csv')
-summary(Oeneis_jutta_occ)
+ProLau_occ <- read.csv('Output/fe.gbif.maxent1.csv')
+summary(ProLau_occ)
 
 ## format the data ----
-Oeneis_jutta_data <- 
+ProLau_data <- 
   BIOMOD_FormatingData(
-    resp.var = Oeneis_jutta_occ['Oeneis.jutta'],
-    resp.xy = Oeneis_jutta_occ[, c('lon', 'lat')],
+    resp.var = ProLau_occ['Oeneis.jutta'],
+    resp.xy = ProLau_occ[, c('lon', 'lat')],
     expl.var = present.stack,
     resp.name = "Oeneis.jutta",
     PA.nb.rep = 2,
@@ -310,13 +310,13 @@ Oeneis_jutta_data <-
   )
 
 ## formatted object summary
-Oeneis_jutta_data
+ProLau_data
 
 ## plot of selected pseudo-absences
-plot(Oeneis_jutta_data)
+plot(ProLau_data)
 
 ## define individual models options ---- 
-Oeneis_jutta_opt <- 
+ProLau_opt <- 
   BIOMOD_ModelingOptions(
     GLM = list(type = 'quadratic', interaction.level = 1),
     GBM = list(n.trees = 1000),
@@ -324,11 +324,11 @@ Oeneis_jutta_opt <-
   )
 
 ## run the individual models ----
-Oeneis_jutta_models <- 
+ProLau_models <- 
   BIOMOD_Modeling(
-    data = Oeneis_jutta_data,
+    data = ProLau_data,
     models = c("GLM", "GBM", "RF", "GAM"),
-    models.options = Oeneis_jutta_opt,
+    models.options = ProLau_opt,
     NbRunEval = 2,
     DataSplit = 80,
     VarImport = 3,
