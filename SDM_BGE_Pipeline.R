@@ -24,6 +24,29 @@ plot(countries)
 class(countries)
 str(countries); countries@bbox
 
+##BUFFER start
+#Error: TopologyException: unable to assign free hole to a shell at 12.46467256644139 43.895551918479619
+countriesBuffer <- buffer(countries, width=5, dissolve=TRUE) # 5 Degree buffer
+plot(countriesBuffer, add=T, col='red')
+plot(countries, add=T)
+class(countriesBuffer)
+
+#1st way:
+countriesBuffer = buffer(countries, width=3, dissolve=F)
+plot(countriesBuffer, add=T, col='red')
+plot(countries, add=T)
+plot(countriesBuffer,col='darkred',main = 'b) 30 m buffer',lty=0)
+
+countriesPolygons <- SpatialPolygons(countries@polygons)
+class(countries@polygons)
+class(countriesPolygons)
+str(countriesPolygons)
+countriesMerged <- gUnaryUnion(countries@polygons)
+plot(countriesPolygons)
+countries_buf <- gBuffer(countries, width = 1000, quadsegs = 10)
+plot(countries_buf)
+#Buffer end.
+
 #Define extent
 extent <- extent(-43, 109, 25, 81) ##NEED TO BE REARRANGE FOR EAST SIDE
 
