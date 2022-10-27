@@ -1,5 +1,5 @@
 rm(list = ls(all=T))
-setwd("D:/Github/BGE-SDM")
+setwd("D:/R")
 #save(list=ls(all=TRUE), file="D:/Github/BGE-SDM/SDM.RData") # save RDATA for later use
 #load("D:/Github/BGE-SDM/SDM.RData")
 
@@ -13,11 +13,15 @@ library(rgeos)
 
 
 #### Define extent and import study area shapefile ####
+#assign CRS
+P4S.latlon <- CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")
+
 #Import shapefile
-countries <- rgdal::readOGR("D:/Github/BGE-SDM/GISDATA/Study Area SHP")
+countries <- rgdal::readOGR("GISDATA/Study Area SHP")
 #dev.off()
-proj4string(countries) <- "+proj=longlat +datum=WGS84"
+proj4string(countries) <- P4S.latlon
 plot(countries)
+class(countries)
 str(countries); countries@bbox
 
 #Define extent
@@ -50,21 +54,17 @@ head(fe.gbif); dim(fe.gbif)
 duplicates <- duplicated(fe.gbif)
 fe.gbif <- fe.gbif[!duplicates,]
 head(fe.gbif); dim(fe.gbif)
-write.csv(fe.gbif, 'D:/Github/BGE-SDM/Output/Oeneis_jutta.csv', row.names=F)
+#write.csv(fe.gbif, 'Oeneis_jutta.csv', row.names=F)
 
 fe.gbif.maxent <- fe.gbif[, c("species", "decimalLongitude", "decimalLatitude")]
 names(fe.gbif.maxent) <- c("species", "lon", "lat")
 head(fe.gbif.maxent); dim(fe.gbif.maxent)
 plot(countries); points(fe.gbif.maxent$lon, fe.gbif.maxent$lat, pch=19, col='red')
-write.csv(fe.gbif.maxent, 'D:/Github/BGE-SDM/Output/fe.gbif.maxent.csv', row.names=F) # write species points file
+write.csv(fe.gbif.maxent, 'Output/fe.gbif.maxent.csv', row.names=F) # write species points file
 
 #assign the fe.gbif as SpatialPointsDataFrame
 coordinates(fe.gbif) <- ~decimalLongitude+decimalLatitude
 str(fe.gbif)
-#assign CRS
-P4S.latlon <- CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")
-
-
 fe.gbif@proj4string <- P4S.latlon
 plot(countries); plot(fe.gbif, col='red', add=T, pch = 16)
 
@@ -151,12 +151,12 @@ mask <- !is.na(mask) # all values to 1
 mask[mask == 0] <- NA # zero values to NA
 plot(mask)
 summary(mask)
-writeRaster(mask, filename  = "D:/Github/BGE-SDM/Output/mask.asc", format = 'ascii', NAflag = -9999, overwrite = T)
-mask <- raster('D:/Github/BGE-SDM/Output/mask.asc')
+writeRaster(mask, filename  = "Output/mask.asc", format = 'ascii', NAflag = -9999, overwrite = T)
+mask <- raster('Output/mask.asc')
 plot(mask, col='red')
 
 # add mask to present.df
-present.df@data$mask <- as.data.frame(stack('D:/Github/BGE-SDM/Output/mask.asc')) # Add mask layer to spdf
+present.df@data$mask <- as.data.frame(stack('Output/mask.asc')) # Add mask layer to spdf
 head(present.df); dim(present.df)
 head(fe.gbif)
 
@@ -260,52 +260,86 @@ head(fe.gbif.df); dim(fe.gbif.df)
 fe.gbif.df$mask <- 1 # Add mask column
 names(fe.gbif.df)
 
-### Create directory
-
-mainDirMaxent <- "D:/Github/BGE-SDM/Output/"
 
 ### 6. MAXENT bioclim ####
 
 ### CHECK FOLDER NAMES !!!
 ### Logistic
 
-#ERROR!!??  numbers of columns of arguments do not match
-swd <- rbind(as.data.frame(fe.gbif.df), sample.df.keep); dim(swd) 
+library(biomod2)
+library(ggplot2)
+library(gridExtra)
+library(raster)
+library(rasterVis)
 
 
-pa <- c(rep(1, nrow(fe.gbif.df)), rep(0, nrow(sample.df.keep))); length(pa) # presence/absence vector
-me <- maxent(swd, pa, args = c("noproduct", "nothreshold", "nohinge", "noextrapolate", "outputformat=logistic", "jackknife", "applyThresholdRule=10 percentile training presence", "projectionlayers=D:/Github/BGE-SDM/RDATA/wc5/bio.asc", "redoifexists"), path=file.path(mainDirMaxent))
+## format the data ----
+ProLau_data <- 
+  BIOMOD_FormatingData(
+    resp.var = fe.gbif.maxent@data["species"],
+    resp.xy = fe.gbif.maxent@coords,
+    expl.var = bioclim_ZA_sub,
+    resp.name = "species",
+    PA.nb.rep = 2,
+    PA.nb.absences = 500,
+    PA.strategy = 'random'
+  )
 
-me
-str(me)
-me@lambdas
-me@results
-str(me@results)
-me@results['X10.percentile.training.presence.logistic.threshold',] # 0.2309
-me@results['Training.AUC',] # 0.8198
-plot(me)
-response(me, 1:12)
-response(me, 13:20)
-response(me, var='bio02') # response curves use median values for all other values. Bio02 is (probably) correlated with other vars. Therefor for a single response the maxent model on 1 variable should be run!!!
+## formatted object summary
+ProLau_data
 
-eval <- evaluate(me, p=fe.gbif.df, a=sample.df.keep)
-eval
-str(eval)
-AUC <- eval@auc
-AUC # 0.8198168
-threshold(eval)
-plot(eval, 'ROC')
+## plot of selected pseudo-absences
+plot(ProLau_data)
 
-# single response bio02 #BIO2 = Mean Diurnal Range (Mean of monthly (max temp - min temp))
-head(swd); str(swd)
-swd.bio02 <- as.data.frame(swd[,c('bio02', 'mask')])
-head(swd.bio02)
-me.bio02 <- maxent(swd.bio02, pa, args = c("noproduct", "nothreshold", "nohinge", "noextrapolate", "outputformat=logistic", "jackknife", "applyThresholdRule=10 percentile training presence", "projectionlayers=D:/GIS/Worldclim/Present/5arcmin/bio.asc", "redoifexists"), path=paste(file.path(mainDirMaxent), '/single.response', sep=""))
 
-me.bio02
-response(me.bio02, 'bio02')
+###### TESTING BY DIFFERENT CSVs #####
+#edited version of maxent by changing column name to species and giving a value as 1.
+ProLau_occ <- read.csv('Output/fe.gbif.maxent1.csv')
+summary(ProLau_occ)
 
-# single response bio16 #BIO16 = Precipitation of Wettest Quarter
+## format the data ----
+ProLau_data <- 
+  BIOMOD_FormatingData(
+    resp.var = ProLau_occ['Oeneis.jutta'],
+    resp.xy = ProLau_occ[, c('lon', 'lat')],
+    expl.var = present.stack,
+    resp.name = "Oeneis.jutta",
+    PA.nb.rep = 2,
+    PA.nb.absences = 500,
+    PA.strategy = 'random'
+  )
+
+## formatted object summary
+ProLau_data
+
+## plot of selected pseudo-absences
+plot(ProLau_data)
+
+## define individual models options ---- 
+ProLau_opt <- 
+  BIOMOD_ModelingOptions(
+    GLM = list(type = 'quadratic', interaction.level = 1),
+    GBM = list(n.trees = 1000),
+    GAM = list(algo = 'GAM_mgcv')
+  )
+
+## run the individual models ----
+ProLau_models <- 
+  BIOMOD_Modeling(
+    data = ProLau_data,
+    models = c("GLM", "GBM", "RF", "GAM"),
+    models.options = ProLau_opt,
+    NbRunEval = 2,
+    DataSplit = 80,
+    VarImport = 3,
+    modeling.id = "demo1"
+  )
+
+
+
+
+
+
 
 ### Null-model ###
 ## Run null-model from source
