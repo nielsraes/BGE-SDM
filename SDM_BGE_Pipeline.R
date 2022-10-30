@@ -25,6 +25,7 @@ class(countries)
 str(countries); countries@bbox
 
 ##BUFFER start
+#2nd way
 #Error: TopologyException: unable to assign free hole to a shell at 12.46467256644139 43.895551918479619
 countriesBuffer <- buffer(countries, width=5, dissolve=TRUE) # 5 Degree buffer
 plot(countriesBuffer, add=T, col='red')
@@ -32,23 +33,32 @@ plot(countries, add=T)
 class(countriesBuffer)
 
 #1st way:
-countriesBuffer = buffer(countries, width=3, dissolve=F)
+countriesBuffer <- buffer(countries, width=3, dissolve=F)
 plot(countriesBuffer, add=T, col='red')
+#BUFFERED EXTENT IS THE SAME WITH THE ORIGINAL EXTENT??
+extent(countriesBuffer);extent(countries)
+
 plot(countries, add=T)
 plot(countriesBuffer,col='darkred',main = 'b) 30 m buffer',lty=0)
+plot(countries,col='darkred',main = 'b) 30 m buffer',lty=0)
 
 countriesPolygons <- SpatialPolygons(countries@polygons)
 class(countries@polygons)
 class(countriesPolygons)
 str(countriesPolygons)
+
+#error?: Invalid geometry, may only be applied to polygons
 countriesMerged <- gUnaryUnion(countries@polygons)
 plot(countriesPolygons)
+#??
 countries_buf <- gBuffer(countries, width = 1000, quadsegs = 10)
 plot(countries_buf)
+
+extent(countries); extent(countriesBuffer); extent(countries_buf)
 #Buffer end.
 
 #Define extent
-extent <- extent(-43, 109, 25, 81) ##NEED TO BE REARRANGE FOR EAST SIDE
+extent <- extent(-43, 109, 25, 82) ##NEED TO BE REARRANGE FOR EAST SIDE
 
 #### 1. GBIF DATA ####
 #get the key of species by its name
@@ -66,13 +76,14 @@ dat.data
 #plot occurences
 map_plot(dat.data, lon = "decimalLongitude", lat = "decimalLatitude", size = 1, pch = 3)
 
-#plot occurrences data and the study area
-plot(countries); points(dat.data$decimalLongitude, dat.data$decimalLatitude, pch=19, col="red")
+#take all the points in the study area
+dat.extent <- dat.data[dat.data$decimalLongitude >= -43 & dat.data$decimalLatitude <= 109, ]
 
-plot(countries)
+#plot occurrences data and the study area
+plot(countries); points(dat.extent$decimalLongitude , dat.extent$decimalLatitude, pch=19, col="red")
 
 #Prepare the data
-fe.gbif <- dat.data[, c('species', 'decimalLongitude', 'decimalLatitude')]
+fe.gbif <- dat.extent[, c('species', 'decimalLongitude', 'decimalLatitude')]
 head(fe.gbif); dim(fe.gbif)
 duplicates <- duplicated(fe.gbif)
 fe.gbif <- fe.gbif[!duplicates,]
@@ -83,7 +94,7 @@ fe.gbif.maxent <- fe.gbif[, c("species", "decimalLongitude", "decimalLatitude")]
 names(fe.gbif.maxent) <- c("species", "lon", "lat")
 head(fe.gbif.maxent); dim(fe.gbif.maxent)
 plot(countries); points(fe.gbif.maxent$lon, fe.gbif.maxent$lat, pch=19, col='red')
-write.csv(fe.gbif.maxent, 'Output/fe.gbif.maxent.csv', row.names=F) # write species points file
+#write.csv(fe.gbif.maxent, 'Output/fe.gbif.maxent.csv', row.names=F) # write species points file
 
 #assign the fe.gbif as SpatialPointsDataFrame
 coordinates(fe.gbif) <- ~decimalLongitude+decimalLatitude
@@ -117,6 +128,7 @@ files.present <- list.files('D:/Github/BGE-SDM/RDATA/clipped/', pattern="[.]asc$
 files.present
 present.stack <- stack(files.present)
 head(present.stack)
+
 present.df <- as.data.frame(present.stack, xy=T)
 coordinates(present.df) <- ~x+y
 gridded(present.df) <- T
@@ -142,8 +154,6 @@ head(fe.gbif); str(fe.gbif)
 fe.gbif <- cbind(fe.gbif, fe.gbif.abiotic) # Link species col and climate data
 names(fe.gbif)
 head(fe.gbif)
-
-#error?? = duplicated() applies only to vectors sol: as.data.frame()
 duplicates <- duplicated(fe.gbif@data[,c("species", "grid.index")]) # Duplicates on grid.index
 str(fe.gbif@data)
 
@@ -316,14 +326,16 @@ plot(Oeneis_jutta_data)
 
 
 ###### TESTING BY DIFFERENT CSVs #####
-#edited version of maxent by changing column name to species and giving a value as 1.
-Oeneis_jutta_occ <- read.csv('Output/fe.gbif.maxent1.csv')
+#change values of all occ data to 1. I think biomod2 wants this structure.
+fe.gbif.biomod2 <- fe.gbif.maxent
+fe.gbif.biomod2["species"] <- 1
+Oeneis_jutta_occ <- fe.gbif.biomod2
 summary(Oeneis_jutta_occ)
 
 ## format the data ----
 Oeneis_jutta_data <- 
   BIOMOD_FormatingData(
-    resp.var = Oeneis_jutta_occ['Oeneis.jutta'],
+    resp.var = Oeneis_jutta_occ['species'],
     resp.xy = Oeneis_jutta_occ[, c('lon', 'lat')],
     expl.var = present.stack,
     resp.name = "Oeneis.jutta",
@@ -346,21 +358,18 @@ Oeneis_jutta_opt <-
     GAM = list(algo = 'GAM_mgcv')
   )
 
+##ERROR: argument 1 matches multiple formal arguments
 ## run the individual models ----
 Oeneis_jutta_models <- 
   BIOMOD_Modeling(
     data = Oeneis_jutta_data,
     models = c("GLM", "GBM", "RF", "GAM"),
-    models.options = Oeneis_jutta_opt,
+    models.options = BiomodOptions,
     NbRunEval = 2,
     DataSplit = 80,
     VarImport = 3,
     modeling.id = "demo1"
   )
-
-
-
-
 
 
 
@@ -381,3 +390,6 @@ Oeneis_jutta_models <-
 ### 11. Project to future bioclim ####
 
 ### 11. Project to future ISRIC ####
+
+
+
