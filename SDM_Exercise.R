@@ -109,8 +109,6 @@ bg <- spatSample(r, 1000, "random", na.rm=TRUE, as.points=TRUE)
 plot(r, 1)
 points(bg, cex=0.5)
 
-bg2 <- spatSample(r, 500, "random", na.rm=TRUE, as.points=TRUE, ext=e)
-
 e <- ext(-80, -53, -39, -22)
 bg2 <- spatSample(r, 500, "random", na.rm=FALSE, as.points=TRUE, ext=e)
 plot(r, 1)
