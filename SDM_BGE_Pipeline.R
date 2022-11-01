@@ -327,7 +327,8 @@ Oeneis_jutta_data <-
 
 ## formatted object summary
 Oeneis_jutta_data
-
+dim(Oeneis_jutta_data)
+str(Oeneis_jutta_data)
 ## plot of selected pseudo-absences
 plot(Oeneis_jutta_data)
 
