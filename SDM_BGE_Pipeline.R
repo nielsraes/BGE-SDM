@@ -50,6 +50,7 @@ str(countriesPolygons)
 #error?: Invalid geometry, may only be applied to polygons
 countriesMerged <- gUnaryUnion(countries@polygons)
 plot(countriesPolygons)
+
 #??
 countries_buf <- gBuffer(countries, width = 1000, quadsegs = 10)
 plot(countries_buf)
@@ -76,7 +77,7 @@ dat.data
 #plot occurences
 map_plot(dat.data, lon = "decimalLongitude", lat = "decimalLatitude", size = 1, pch = 3)
 
-#take all the points in the study area
+#take all the points in the extent of study area
 dat.extent <- dat.data[dat.data$decimalLongitude >= -43 & dat.data$decimalLatitude <= 109, ]
 
 #plot occurrences data and the study area
@@ -95,6 +96,8 @@ names(fe.gbif.maxent) <- c("species", "lon", "lat")
 head(fe.gbif.maxent); dim(fe.gbif.maxent)
 plot(countries); points(fe.gbif.maxent$lon, fe.gbif.maxent$lat, pch=19, col='red')
 #write.csv(fe.gbif.maxent, 'Output/fe.gbif.maxent.csv', row.names=F) # write species points file
+
+fe.gbif.bmod2 <- fe.gbif.maxent
 
 #assign the fe.gbif as SpatialPointsDataFrame
 coordinates(fe.gbif) <- ~decimalLongitude+decimalLatitude
@@ -306,30 +309,8 @@ library(raster)
 library(rasterVis)
 
 
-## format the data ----
-Oeneis_jutta_data <- 
-  BIOMOD_FormatingData(
-    resp.var = fe.gbif.maxent@data["species"],
-    resp.xy = fe.gbif.maxent@coords,
-    expl.var = bioclim_ZA_sub,
-    resp.name = "species",
-    PA.nb.rep = 2,
-    PA.nb.absences = 500,
-    PA.strategy = 'random'
-  )
-
-## formatted object summary
-Oeneis_jutta_data
-
-## plot of selected pseudo-absences
-plot(Oeneis_jutta_data)
-
-
-###### TESTING BY DIFFERENT CSVs #####
-#change values of all occ data to 1. I think biomod2 wants this structure.
-fe.gbif.biomod2 <- fe.gbif.maxent
-fe.gbif.biomod2["species"] <- 1
-Oeneis_jutta_occ <- fe.gbif.biomod2
+fe.gbif.bmod2["species"] <- 1
+Oeneis_jutta_occ <- fe.gbif.bmod2
 summary(Oeneis_jutta_occ)
 
 ## format the data ----
